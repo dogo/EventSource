@@ -82,15 +82,11 @@ struct ServerEventParser: EventParser {
     }
 
     private func splitData(_ data: Data, separator: [UInt8]) -> [Data] {
-        #if os(visionOS)
-        return data.split(separator: separator)
-        #else
         if #available(macOS 13.0, iOS 16.0, watchOS 9.0, tvOS 16.0, *) {
             return data.split(separator: separator)
         } else {
-            return data.split(by: separator)
+            return data.legacySplit(by: separator)
         }
-        #endif
     }
 
     private func findLastSeparator(in data: Data, separators: [[UInt8]]) -> ([UInt8]?, Range<Data.Index>?) {
@@ -125,12 +121,10 @@ struct ServerEventParser: EventParser {
 }
 
 fileprivate extension Data {
-    @available(macOS, deprecated: 13.0, obsoleted: 13.0, message: "This method is not recommended on macOS 13.0+")
-    @available(iOS, deprecated: 16.0, obsoleted: 16.0, message: "This method is not recommended on iOS 16.0+")
-    @available(watchOS, deprecated: 9.0, obsoleted: 9.0, message: "This method is not recommended on watchOS 9.0+")
-    @available(tvOS, deprecated: 16.0, obsoleted: 16.0, message: "This method is not recommended on tvOS 16.0+")
-    @available(visionOS, unavailable, message: "Use split(separator:) instead")
-    func split(by separator: [UInt8]) -> [Data] {
+    // Fallback for `split(separator:)`, which needs macOS 13/iOS 16/watchOS 9/tvOS 16.
+    // No `@available` here on purpose: `obsoleted:` becomes a hard error once a toolchain
+    // raises the deployment floor to that version, even inside an `#available` else branch.
+    func legacySplit(by separator: [UInt8]) -> [Data] {
         var chunks: [Data] = []
         var pos = startIndex
         // Find next occurrence of separator after current position
